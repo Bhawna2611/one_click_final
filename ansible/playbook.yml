@@ -1,0 +1,8 @@
+---
+- name: Docker Installation
+  hosts: web
+  become: true
+  gather_facts: yes  
+
+  roles:
+    - role_docker_install       
