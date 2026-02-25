@@ -47,7 +47,7 @@ resource "null_resource" "copy_key" {
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    private_key = file(var.ssh_key_path)
+    private_key = var.ssh_private_key
     host        = aws_instance.bastion.public_ip
 
     # Increase timeout so Terraform keeps retrying SSH until the instance is ready

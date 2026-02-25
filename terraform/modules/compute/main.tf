@@ -56,7 +56,7 @@ resource "aws_launch_template" "mysql" {
 
 # Auto Scaling Group
 resource "aws_autoscaling_group" "mysql" {
-  name              = var.asg_name
+  name_prefix       = "${var.asg_name}-"
   min_size          = 1
   max_size          = 3
   desired_capacity  = 2
@@ -69,11 +69,18 @@ resource "aws_autoscaling_group" "mysql" {
     version = "$Latest"
   }
 
-  
   lifecycle {
     create_before_destroy = true
+    ignore_changes        = [launch_template[0].version]
+  }
+
+  tag {
+    key                 = "Name"
+    value               = var.asg_name
+    propagate_at_launch = true
   }
 }
+
 
 data "aws_instances" "asg_instances" {
   filter {

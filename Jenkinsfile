@@ -32,14 +32,28 @@ pipeline {
         stage('Terraform Infrastructure') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'aws-keys', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY'), sshUserPrivateKey(credentialsId: 'my-server-ssh-key-v1', keyFileVariable: 'SSH_KEY')]) {
-                    dir("${env.TF_DIRECTORY}") {
-                        // Copy SSH key for Terraform to use
-                        sh "rm -f /tmp/one__click.pem && cp ${SSH_KEY} /tmp/one__click.pem && chmod 400 /tmp/one__click.pem"
-                        
-                        // Added -input=false and -force-copy to stop Terraform from asking for manual input
-                        sh 'terraform init -input=false -migrate-state -force-copy'
-                        script {
+                    script {
+                        // Copy SSH key for Terraform provisioners to use
+                        sh 'rm -f /tmp/one__click.pem && cp "$SSH_KEY" /tmp/one__click.pem && chmod 400 /tmp/one__click.pem'
+
+                        // Read key content and expose as TF_VAR so Terraform receives it directly
+                        // This avoids using file() which cannot read from /tmp in newer Terraform versions
+                        env.TF_VAR_ssh_private_key = sh(script: 'cat /tmp/one__click.pem', returnStdout: true).trim()
+
+                        dir("${env.TF_DIRECTORY}") {
+                            sh 'terraform init -input=false -migrate-state -force-copy'
+
                             if (params.TF_ACTION == 'apply') {
+                                // Untaint any resources tainted from previous failed runs to avoid "already exists" errors
+                                sh '''
+                                    for resource in $(terraform state list 2>/dev/null); do
+                                        if terraform state show "$resource" 2>/dev/null | grep -q "^  # .* (tainted)"; then
+                                            echo "Untainting: $resource"
+                                            terraform untaint "$resource" || true
+                                        fi
+                                    done
+                                    echo "Taint check complete."
+                                '''
                                 sh 'terraform apply -auto-approve -input=false'
                             } else {
                                 sh 'terraform destroy -auto-approve -input=false'

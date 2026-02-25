@@ -21,12 +21,13 @@ module "bastion" {
   vpc_id           = module.network.vpc_id
   public_subnet_id = module.network.public_subnet_ids[0]
 
-  ami_id        = var.ami_id
-  instance_type = var.instance_type
-  key_name      = var.key_name
-  ssh_cidr      = var.ssh_cidr
-  common_tags   = var.common_tags
-  ssh_key_path  = var.ssh_key_path
+  ami_id          = var.ami_id
+  instance_type   = var.instance_type
+  key_name        = var.key_name
+  ssh_cidr        = var.ssh_cidr
+  common_tags     = var.common_tags
+  ssh_key_path    = var.ssh_key_path
+  ssh_private_key = var.ssh_private_key
 }
 
 module "alb" {

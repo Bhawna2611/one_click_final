@@ -71,6 +71,13 @@ variable "ssh_key_path" {
   default     = "/tmp/one__click.pem"
 }
 
+variable "ssh_private_key" {
+  description = "Content of the SSH private key (passed directly to avoid file() restrictions)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "alb_port" {
   description = "Port for the Application Load Balancer"
   type        = number

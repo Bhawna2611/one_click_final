@@ -19,6 +19,12 @@ variable "common_tags" {
 }
 
 variable "ssh_key_path" {
- description = "Path to the private key for copying to bastion host"
- type        = string
+  description = "Path to the private key for copying to bastion host"
+  type        = string
+}
+
+variable "ssh_private_key" {
+  description = "Content of the SSH private key (passed directly to avoid file() path restrictions)"
+  type        = string
+  sensitive   = true
 }
