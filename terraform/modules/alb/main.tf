@@ -37,7 +37,12 @@ resource "aws_lb_target_group" "tg" {
   vpc_id   = var.vpc_id
 
   health_check {
-    path = "/"
+    path                = "/"
+    interval            = 15
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    matcher             = "200-399"
   }
 
   lifecycle {

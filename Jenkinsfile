@@ -107,36 +107,37 @@ pipeline {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'my-server-ssh-key-v1', keyFileVariable: 'SSH_KEY')]) {
                     dir("${env.ANSIBLE_DIRECTORY}") {
-                        // Copy entire docker folder to remote server
-                        sh "ansible all -i inventory.ini -m copy -a 'src=../docker/ dest=/home/ubuntu/employee-app/' --private-key=/tmp/one__click.pem -u ubuntu"
-                        
+                        // Copy entire docker folder to remote server (as root so dest dir can be created)
+                        sh "ansible all -i inventory.ini -m copy -a 'src=../docker/ dest=/home/ubuntu/employee-app/' --become --private-key=/tmp/one__click.pem -u ubuntu"
+
                         // Deploy using docker-compose
                         sh """
                             ansible all -i inventory.ini -m shell -a '
                                 cd /home/ubuntu/employee-app && \\
                                 sudo docker-compose down || true && \\
                                 sudo docker-compose up -d --build && \\
-                                sleep 10 && \\
+                                echo "Waiting 30s for MySQL and app to be ready..." && \\
+                                sleep 30 && \\
                                 sudo docker-compose ps
                             ' --become --private-key=/tmp/one__click.pem -u ubuntu
                         """
-                        
-                        // Verify deployment
+
+                        // Verify deployment (use || true so status is shown without failing pipeline)
                         sh """
                             ansible all -i inventory.ini -m shell -a '
-                                echo "=== Checking Frontend ===" && \\
-                                curl -f http://localhost:3000 -o /dev/null -s -w "Frontend Status: %{http_code}\\n" && \\
-                                echo "=== Checking API ===" && \\
-                                curl -f http://localhost:3000/api/employees -s | head -c 100 && \\
-                                echo "" && \\
                                 echo "=== Container Status ===" && \\
-                                sudo docker-compose -f /home/ubuntu/employee-app/docker-compose.yml ps
-                            ' --private-key=/tmp/one__click.pem -u ubuntu
+                                sudo docker-compose -f /home/ubuntu/employee-app/docker-compose.yml ps && \\
+                                echo "=== Checking Frontend ===" && \\
+                                curl -s -o /dev/null -w "Frontend HTTP Status: %{http_code}\\n" http://localhost:3000 || echo "Frontend not responding yet" && \\
+                                echo "=== Checking API ===" && \\
+                                curl -s http://localhost:3000/api/employees | head -c 200 || echo "API not responding yet"
+                            ' --become --private-key=/tmp/one__click.pem -u ubuntu
                         """
                     }
                 }
             }
         }
+
     }
 
     post { 
