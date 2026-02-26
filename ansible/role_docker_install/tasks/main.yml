@@ -1,4 +1,13 @@
 ---
+- name: Wait for apt/dpkg lock to be released (user_data may still be running)
+  ansible.builtin.shell: |
+    while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock >/dev/null 2>&1; do
+      echo "Waiting for apt lock to be released..."
+      sleep 5
+    done
+  changed_when: false
+  timeout: 300
+
 - name: Update apt package index
   ansible.builtin.apt:
     update_cache: true
@@ -49,7 +58,7 @@
   ansible.builtin.get_url:
     url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64"
     dest: /usr/local/bin/docker-compose
-    mode: '0755'
+    mode: "0755"
 
 - name: Verify Docker Compose installation
   ansible.builtin.command: docker-compose --version
