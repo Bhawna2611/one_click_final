@@ -8,39 +8,52 @@
   changed_when: false
   timeout: 300
 
-- name: Update apt package index
-  ansible.builtin.apt:
-    update_cache: true
-    force_apt_get: true
+- name: Check if Docker is already installed
+  ansible.builtin.command: docker --version
+  register: docker_check
+  changed_when: false
+  failed_when: false
 
-- name: Install prerequisite system packages
-  ansible.builtin.apt:
-    pkg:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - software-properties-common
-      - python3-pip
-    state: present
+- name: Install Docker (skipped if already installed by user_data)
+  when: docker_check.rc != 0
+  block:
+    - name: Update apt package index
+      ansible.builtin.apt:
+        update_cache: true
+        force_apt_get: true
 
-- name: Add Docker official GPG key
-  ansible.builtin.apt_key:
-    url: https://download.docker.com/linux/ubuntu/gpg
-    state: present
+    - name: Install prerequisite system packages
+      ansible.builtin.apt:
+        pkg:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - software-properties-common
+          - python3-pip
+        state: present
 
-- name: Add Docker repository to apt sources
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
-    state: present
+    - name: Add Docker GPG key (modern signed-by method)
+      ansible.builtin.shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+        chmod a+r /etc/apt/keyrings/docker.asc
+      args:
+        creates: /etc/apt/keyrings/docker.asc
 
-- name: Install Docker Engine (Community Edition)
-  ansible.builtin.apt:
-    name:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-    state: present
-    update_cache: true
+    - name: Add Docker repository to apt sources
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker Engine (Community Edition)
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: true
 
 - name: Start Docker service and enable on boot
   ansible.builtin.service:
@@ -54,11 +67,18 @@
     groups: docker
     append: true
 
-- name: Install Docker Compose
+- name: Check if Docker Compose is already installed
+  ansible.builtin.command: docker-compose --version
+  register: compose_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker Compose (skipped if already installed)
   ansible.builtin.get_url:
     url: "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64"
     dest: /usr/local/bin/docker-compose
     mode: "0755"
+  when: compose_check.rc != 0
 
 - name: Verify Docker Compose installation
   ansible.builtin.command: docker-compose --version
