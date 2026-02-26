@@ -91,8 +91,11 @@ pipeline {
             steps {
                 withCredentials([sshUserPrivateKey(credentialsId: 'my-server-ssh-key-v1', keyFileVariable: 'SSH_KEY')]) {
                     dir("${env.ANSIBLE_DIRECTORY}") {
-                        // Copy SSH key for Terraform to use
+                        // Wait for ASG instances to be fully up and user_data to complete
+                        sh 'echo "Waiting 90s for ASG instances and user_data to complete..." && sleep 90'
+                        // Copy SSH key
                         sh "rm -f /tmp/one__click.pem && cp ${SSH_KEY} /tmp/one__click.pem && chmod 400 /tmp/one__click.pem"
+                        // Run Ansible with retries
                         sh "ansible-playbook -i inventory.ini playbook.yml --private-key=/tmp/one__click.pem -u ubuntu"
                     }
                 }
