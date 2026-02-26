@@ -34,7 +34,7 @@ module "alb" {
   source = "./modules/alb"
 
   vpc_id         = module.network.vpc_id
-  public_subnets = module.network.private_subnet_ids
+  public_subnets = module.network.public_subnet_ids
   common_tags    = var.common_tags
   alb_name       = var.alb_name
   alb_port       = var.alb_port
