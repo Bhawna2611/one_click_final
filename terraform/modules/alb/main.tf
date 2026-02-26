@@ -30,7 +30,7 @@ resource "aws_lb" "this" {
 }
 
 resource "aws_lb_target_group" "tg" {
-  
+
   name     = "${var.alb_name}-tg-${var.app_port}"
   port     = var.app_port
   protocol = "HTTP"
@@ -43,6 +43,15 @@ resource "aws_lb_target_group" "tg" {
     unhealthy_threshold = 3
     timeout             = 5
     matcher             = "200-399"
+  }
+
+  # Sticky sessions: ensure each user always hits the same instance.
+  # This is needed because each instance runs its own local MySQL container,
+  # so requests must be pinned to the instance that owns the session's data.
+  stickiness {
+    type            = "lb_cookie"
+    cookie_duration = 86400 # 1 day in seconds
+    enabled         = true
   }
 
   lifecycle {
