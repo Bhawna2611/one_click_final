@@ -58,8 +58,8 @@ resource "aws_launch_template" "mysql" {
 resource "aws_autoscaling_group" "mysql" {
   name_prefix       = "${var.asg_name}-"
   min_size          = 1
-  max_size          = 2
-  desired_capacity  = 1
+  max_size          = 3
+  desired_capacity  = 2
 
   vpc_zone_identifier = var.private_subnets
   target_group_arns  = [var.tg_arn]
