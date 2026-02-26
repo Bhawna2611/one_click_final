@@ -10,7 +10,7 @@ common_tags = {
 }
 
 vpc_cidr      = "10.0.0.0/16"
-public_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+public_cidrs  = ["10.0.1.0/24"]
 private_cidrs = ["10.0.10.0/24", "10.0.11.0/24"]
 alb_name      = "mysql-alb"
 asg_name      = "mysql-asg"

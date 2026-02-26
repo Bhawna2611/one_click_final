@@ -68,15 +68,10 @@ pipeline {
             when { expression { params.TF_ACTION == 'apply' } }
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'aws-keys', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-                        dir("${env.TF_DIRECTORY}") {
-                            env.BASTION_IP = sh(script: "terraform output -raw bastion_public_ip", returnStdout: true).trim()
-                            env.PRIVATE_IP = sh(script: "terraform output -raw private_instance_ip", returnStdout: true).trim()
-                        }
-                    }
+                    // Terraform already generates inventory.ini via local_file + templatefile
+                    // Just verify it was created correctly
                     dir("${env.ANSIBLE_DIRECTORY}") {
-                        sh "sed -i 's/BASTION_IP_PLACEHOLDER/${env.BASTION_IP}/g' inventory.ini"
-                        sh "sed -i 's/PRIVATE_IP_PLACEHOLDER/${env.PRIVATE_IP}/g' inventory.ini"
+                        sh 'echo "=== Generated Inventory ===" && cat inventory.ini'
                     }
                 }
             }
