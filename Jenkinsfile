@@ -92,7 +92,7 @@ pipeline {
                 withCredentials([sshUserPrivateKey(credentialsId: 'my-server-ssh-key-v1', keyFileVariable: 'SSH_KEY')]) {
                     dir("${env.ANSIBLE_DIRECTORY}") {
                         // Wait for ASG instances to be fully up and user_data to complete
-                        sh 'echo "Waiting 90s for ASG instances and user_data to complete..." && sleep 90'
+                        sh 'echo "Waiting 120s for ASG instances and user_data to complete..." && sleep 120'
                         // Copy SSH key
                         sh "rm -f /tmp/one__click.pem && cp ${SSH_KEY} /tmp/one__click.pem && chmod 400 /tmp/one__click.pem"
                         // Run Ansible with retries

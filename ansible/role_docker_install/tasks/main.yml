@@ -1,12 +1,19 @@
 ---
+# ---------------------------------------------------------------------------
+# Helper macro: wait until ALL apt/dpkg locks are released.
+# Called multiple times so that an interleaving user_data apt process can't
+# grab the lock between our check and our install step.
+# ---------------------------------------------------------------------------
 - name: Wait for apt/dpkg lock to be released (user_data may still be running)
   ansible.builtin.shell: |
-    while fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock >/dev/null 2>&1; do
-      echo "Waiting for apt lock to be released..."
-      sleep 5
+    for lock in /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock; do
+      while fuser "$lock" >/dev/null 2>&1; do
+        echo "Waiting for $lock to be released..."
+        sleep 5
+      done
     done
   changed_when: false
-  timeout: 300
+  timeout: 600 # wait up to 10 min for user_data to finish
 
 - name: Check if Docker is already installed
   ansible.builtin.command: docker --version
@@ -17,10 +24,24 @@
 - name: Install Docker (skipped if already installed by user_data)
   when: docker_check.rc != 0
   block:
+    # Wait again — user_data may have released the lock briefly and grabbed it
+    # again in a subsequent apt call between our earlier check and now.
+    - name: Wait for apt/dpkg lock again before first apt operation
+      ansible.builtin.shell: |
+        for lock in /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/lib/dpkg/lock; do
+          while fuser "$lock" >/dev/null 2>&1; do
+            echo "Waiting for $lock to be released..."
+            sleep 5
+          done
+        done
+      changed_when: false
+      timeout: 600
+
     - name: Update apt package index
       ansible.builtin.apt:
         update_cache: true
         force_apt_get: true
+        lock_timeout: 300 # ansible retries internally for up to 5 min
 
     - name: Install prerequisite system packages
       ansible.builtin.apt:
@@ -31,6 +52,7 @@
           - software-properties-common
           - python3-pip
         state: present
+        lock_timeout: 300
 
     - name: Add Docker GPG key (modern signed-by method)
       ansible.builtin.shell: |
@@ -54,6 +76,7 @@
           - containerd.io
         state: present
         update_cache: true
+        lock_timeout: 300
 
 - name: Start Docker service and enable on boot
   ansible.builtin.service:
